@@ -128,7 +128,7 @@ export const addImageMessage = async (req, res, next) => {
 
     // Resize the image to a lower resolution
     const lowerResolutionBuffer = await sharp(originalImageBuffer)
-      .resize({ width: 10, height: 10 }) // Adjust dimensions as needed
+      .resize({ width: 5, height: 5 }) // Adjust dimensions as needed
       .toBuffer();
 
     // Store both original and lower-resolution image data in the database
