@@ -1,0 +1,43 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "darwin"]
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id String @id @map("_id") @default(auto()) @db.ObjectId()
+  email String @unique
+  name String
+  profileImage String
+  status String
+  about String
+  NewUser Boolean 
+  sentMessages Messages[] @relation("sentMessages")
+  recievedMessages Messages[] @relation("recievedMessages")
+}
+
+model ImageMessage {
+  id String @id @map("_id") @default(auto()) @db.ObjectId()
+  image Bytes
+  resolution String
+  messageId String @db.ObjectId
+  message Messages? @relation(fields: [messageId], references: [id])
+}
+
+model Messages {  
+  id String @id @map("_id") @default(auto()) @db.ObjectId()
+  sender User @relation("sentMessages", fields: [senderId], references: [id])
+  senderId String @db.ObjectId() 
+  reciever User @relation("recievedMessages", fields: [recieverId], references: [id])
+  recieverId String @db.ObjectId()
+  type String @default("text")
+  imagemessages ImageMessage[]
+  audiomessage Bytes?
+  message String?
+  messageStatus String @default("sent")
+  createdAt DateTime @default(now())
+}
