@@ -42,6 +42,21 @@ io.on("connection", (socket)=>{
         }
         onlineUsers.set(data.to, socket.id);
     })
+    socket.on("typing", async (data) => {
+        const sendUserSocket = await onlineUsers.get(data.recieverId);
+        if (sendUserSocket) {
+            socket.to(sendUserSocket).emit("user-typing");
+        }
+        onlineUsers.set(data.to, socket.id);
+    })
+
+    socket.on("typingblur", async (data) => {
+        const sendUserSocket = await onlineUsers.get(data.recieverId);
+        if (sendUserSocket) {
+            socket.to(sendUserSocket).emit("user-typingblur");
+        }
+        onlineUsers.set(data.to, socket.id);
+    })
     socket.on("outgoing-voice-call",(data)=>{
         const sendUserSocket = onlineUsers.get(data.to);
         if(sendUserSocket){
