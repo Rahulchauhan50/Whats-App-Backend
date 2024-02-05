@@ -75,7 +75,8 @@ export const getMessages = async (req, res, next) => {
       }else if(message.type==="image"){
         msgbase = msgbase = {
           msg:message.imagemessages[1].image.toString('base64'),
-          originalId:message.imagemessages[0].id
+          originalId:message.imagemessages[0].id,
+          original:false
         }
       }
       return {
@@ -105,7 +106,7 @@ export const getImage = async(req, res) => {
     });
 
     if(imageMessage){
-      return res.status(200).json({message:imageMessage.image.toString('base64')})
+      return res.status(200).json({message:imageMessage.image.toString('base64'),original:true})
     }
     res.status(200).json({mesage:"image not found"})
   } catch (error) {
@@ -128,11 +129,11 @@ export const addImageMessage = async (req, res, next) => {
 
     // Resize the image to a lower resolution
     const lowerResolutionBuffer = await sharp(originalImageBuffer)
-      .resize({ width: 5, height: 5 }) // Adjust dimensions as needed
-      .toBuffer();
+  .resize({ width: 5, height: 5, fit: sharp.fit.inside })
+  .toBuffer();
 
     // Store both original and lower-resolution image data in the database
-    const imageMessage = await prisma.messages.create({
+    const message = await prisma.messages.create({
       data: {
         imagemessages: {
           create: [
@@ -156,10 +157,15 @@ export const addImageMessage = async (req, res, next) => {
       },
     });
 
+    const imageMessage = await prisma.imageMessage.findUnique({
+      where: { id: message.id },
+      include: { message: true }, // Include the associated message if needed
+    });
+
     // Remove the temporary file
     await fs.unlink(req.file.path);
 
-    return res.status(201).json({ imageMessage });
+    return res.status(201).json({msg:originalImageBuffer.toString('base64'),original:true });
   } catch (error) {
     next(error);
   }
