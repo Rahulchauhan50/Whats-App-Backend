@@ -22,11 +22,12 @@ const server = app.listen(port,()=>{
 
 const io = new Server(server, {
     cors:{
-        origin:["http://localhost:3000","http://192.168.102.2"],
+        origin:"http://localhost:3000",
     },
 })
 
 global.onlineUsers = new Map();
+global.currentChatUser = new Map();;
 
 io.on("connection", (socket)=>{
     global.chatShocket = socket;
@@ -38,16 +39,26 @@ io.on("connection", (socket)=>{
     socket.on("send-msg", async (data) => {
         const sendUserSocket = await onlineUsers.get(data.recieverId);
         if (sendUserSocket) {
+            console.log("dhdh")
             socket.to(sendUserSocket).emit("msg-recieve", data);
         }
-        onlineUsers.set(data.to, socket.id);
+        // onlineUsers.set(data.to, socket.id);
     })
     socket.on("typing", async (data) => {
         const sendUserSocket = await onlineUsers.get(data.recieverId);
         if (sendUserSocket) {
             socket.to(sendUserSocket).emit("user-typing");
         }
-        onlineUsers.set(data.to, socket.id);
+        // onlineUsers.set(data.to, socket.id);
+    })
+    
+    socket.on("send-msg-read", async (data) => {
+        const sendUserSocket = await onlineUsers.get(data.to);
+        currentChatUser.set(data.by, data.to);
+        if (sendUserSocket) {
+            socket.to(sendUserSocket).emit("msg-read");
+        }
+        // onlineUsers.set(data.to, socket.id);
     })
 
     socket.on("typingblur", async (data) => {
@@ -55,7 +66,7 @@ io.on("connection", (socket)=>{
         if (sendUserSocket) {
             socket.to(sendUserSocket).emit("user-typingblur");
         }
-        onlineUsers.set(data.to, socket.id);
+        // onlineUsers.set(data.to, socket.id);
     })
     socket.on("outgoing-voice-call",(data)=>{
         const sendUserSocket = onlineUsers.get(data.to);
@@ -98,6 +109,18 @@ io.on("connection", (socket)=>{
         const sendUserSocket = onlineUsers.get(data.id);
         if(sendUserSocket){
             socket.to(sendUserSocket).emit("accept-call")
+            // console.log("call accepted")
         }
     })
+
+    // socket.on("DisconnectEvent",(userId)=>{
+    //     console.log("before", onlineUsers)
+       
+    //     console.log("after", onlineUsers)
+    // })
+
+    // socket.on('disconnecting', (userId) => {
+    //     onlineUsers.delete(userId);
+    //     currentChatUser.delete(userId)
+    // })
 })

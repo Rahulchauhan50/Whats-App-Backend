@@ -10,13 +10,19 @@ export const addMessage = async (req, res, next) => {
     const prisma = getPrismaInstance();
     const { message, from, to } = req.body;
     const getUser = onlineUsers.get(to);
+    var msgStatus = "sent"
+    if(currentChatUser.get(to) === from){
+      msgStatus = "read"
+    }else if(getUser){
+      msgStatus = "delivered"
+    }
     if (message && from && to) {
       const newMessage = await prisma.messages.create({
         data: {
           message,
           sender: { connect: { id: from } },
           reciever: { connect: { id: to } },
-          messageStatus: getUser ? "delivered" : "sent",
+          messageStatus: msgStatus,
         },
         include: { reciever: true, sender: true },
       });
@@ -62,11 +68,12 @@ export const getMessages = async (req, res, next) => {
       }
     });
 
+    
     await prisma.messages.updateMany({
       where: { id: { in: unReadMeassages } },
       data: { messageStatus: "read" },
     });
-
+    
     // Convert binary data to base64 for image messages
     const messagesWithBase64 = message.map((message) => {
       var msgbase = message.message;
@@ -129,8 +136,16 @@ export const addImageMessage = async (req, res, next) => {
 
     // Resize the image to a lower resolution
     const lowerResolutionBuffer = await sharp(originalImageBuffer)
-  .resize({ width: 5, height: 5, fit: sharp.fit.inside })
+  .resize({fit: sharp.fit.inside })
   .toBuffer();
+
+  const getUser = onlineUsers.get(to);
+  var msgStatus = "sent"
+  if(currentChatUser.get(to) === from){
+    msgStatus = "read"
+  }else if(getUser){
+    msgStatus = "delivered"
+  }
 
     // Store both original and lower-resolution image data in the database
     const message = await prisma.messages.create({
@@ -154,6 +169,8 @@ export const addImageMessage = async (req, res, next) => {
           connect: { id: to },
         },
         type: 'image',
+        messageStatus: msgStatus,
+
       },
     });
 
@@ -165,7 +182,7 @@ export const addImageMessage = async (req, res, next) => {
     // Remove the temporary file
     await fs.unlink(req.file.path);
 
-    return res.status(201).json({msg:originalImageBuffer.toString('base64'),original:true });
+    return res.status(201).json({msg:imageMessage,original:true, msgStatus: msgStatus});
   } catch (error) {
     next(error);
   }
@@ -231,11 +248,26 @@ export const getInitialContactSwitchMessages = async (req, res, next) => {
       },
     });
 
+    await prisma.messages.updateMany({
+      where: {
+        id: {
+          in: user.recievedMessages.map(message => message.id)
+        },
+        messageStatus: {
+          not: "read"  // Adding condition to update only when messageStatus is not "read"
+        }
+      },
+      data: {
+        messageStatus: "delivered"
+      }
+    });
+    
+
     // Combine and sort messages
     const messages = [...user.sentMessages, ...user.recievedMessages];
     messages.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
-    // return res.json({messages})
+    // return res.json({messages:user.recievedMessages})
 
     // Create a map to track users based on their last message
     const usersMap = new Map();
@@ -290,5 +322,3 @@ export const getInitialContactSwitchMessages = async (req, res, next) => {
     next(error);
   }
 };
-
-
