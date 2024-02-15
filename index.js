@@ -22,7 +22,7 @@ const server = app.listen(port,()=>{
 
 const io = new Server(server, {
     cors:{
-        origin:"http://localhost:3000",
+        origin:"https://whatsapw.netlify.app/",
     },
 })
 
