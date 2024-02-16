@@ -1,5 +1,9 @@
 import getPrismaInstance from "../utils/PrismaClient.js";
 import { generateToken04 } from "../utils/TokenGenerator.js"
+import fs from 'fs/promises';
+import path from "path";
+import sharp from 'sharp';
+import { renameSync } from "fs";
 
 export const checkUser = async(req,res,next) => {
     try {
@@ -12,6 +16,7 @@ export const checkUser = async(req,res,next) => {
         if(!user){
             res.json({msg:"user not found",status:false})
         }else{
+         
             res.json({msg:"user found",status:true,data:user})
         }
     } catch (error) {
@@ -21,14 +26,27 @@ export const checkUser = async(req,res,next) => {
 
 export const onBoardUser = async (req, res, next) => {
     try {
-        const { email, name, about, image: profileImage } = req.body;
-        if (!email || !name || !about || !profileImage) {
+        const { email, name, about, image: profileImage } = req.query;
+        if (!email || !name || !about) {
             return res.send("Email, name, about, and profileImage are required.");
+            
         }
         const prisma = getPrismaInstance();
-        await prisma.user.create({
-            data: { email, name, about, profileImage, status:"true", NewUser:false },
-        });
+        if(req.file){
+            const date = Date.now();
+            let filename = "uploads/images/" + date + req.file.originalname;
+            let fileUrl = process.env.HOST + "/" + filename
+    
+            renameSync(req.file.path, filename);
+            await prisma.user.create({
+                data: {email, name, about, profileImage, status:"true", NewUser:false,profileImage:fileUrl},
+            });
+        }else{
+            await prisma.user.create({
+                data: {email, name, about, profileImage, status:"true", NewUser:false,profileImage},
+            });
+        }
+       
         return res.json({ msg: "Success", status: true });
     } catch (error) {
         next(error);
@@ -45,7 +63,7 @@ export const getAllUsers = async (req, res, next) => {
                 email:true,
                 name:true,
                 profileImage:true,
-                about:true
+                about:true,
             }
         });
         const usersGroupedByInitialLetter = {};

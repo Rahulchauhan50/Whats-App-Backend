@@ -12,6 +12,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.use("/uploads/images", express.static("uploads/images"));
+app.use("/uploads/recordings", express.static("uploads/recordings"));
+
 app.use("/api/auth",AuthRoutes)
 app.use("/api/messages",MessageRoutes)
 
@@ -22,7 +25,7 @@ const server = app.listen(port,()=>{
 
 const io = new Server(server, {
     cors:{
-        origin:"https://whatsapw.netlify.app/",
+        origin:process.env.CLIENT_HOST,
     },
 })
 
@@ -39,7 +42,6 @@ io.on("connection", (socket)=>{
     socket.on("send-msg", async (data) => {
         const sendUserSocket = await onlineUsers.get(data.recieverId);
         if (sendUserSocket) {
-            console.log("dhdh")
             socket.to(sendUserSocket).emit("msg-recieve", data);
         }
         // onlineUsers.set(data.to, socket.id);

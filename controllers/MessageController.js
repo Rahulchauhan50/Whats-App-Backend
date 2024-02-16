@@ -73,31 +73,8 @@ export const getMessages = async (req, res, next) => {
       where: { id: { in: unReadMeassages } },
       data: { messageStatus: "read" },
     });
-    
-    // Convert binary data to base64 for image messages
-    const messagesWithBase64 = message.map((message) => {
-      var msgbase = message.message;
-      if(message.type==="audio"){
-        msgbase = message.audiomessage.toString('base64')
-      }else if(message.type==="image"){
-        msgbase = msgbase = {
-          msg:message.imagemessages[1].image.toString('base64'),
-          originalId:message.imagemessages[0].id,
-          original:false
-        }
-      }
-      return {
-        id: message.id,
-        senderId: message.senderId,
-        recieverId: message.recieverId,
-        type: message.type,
-        message: msgbase,
-        messageStatus: message.messageStatus,
-        createdAt: message.createdAt,
-      };
-    });
 
-    res.status(200).json({ message: messagesWithBase64});
+    res.status(200).json({ message: message});
   } catch (error) {
     next(error);
   }
@@ -117,72 +94,110 @@ export const getImage = async(req, res) => {
     }
     res.status(200).json({mesage:"image not found"})
   } catch (error) {
-    console.error('Error fetching image message:', error);
-    throw error;
+    next(error)
+
   }
 };
 
+// export const addImageMessage = async (req, res, next) => {
+//   try {
+//     const prisma = getPrismaInstance();
+//     const { from, to } = req.query;
+
+//     if (!from || !to) {
+//       return res.status(400).send("From and to are required");
+//     }
+
+//     // Read original image data as a Buffer
+//     const originalImageBuffer = await fs.readFile(req.file.path);
+
+//     // Resize the image to a lower resolution
+//     const lowerResolutionBuffer = await sharp(originalImageBuffer)
+//   .resize({fit: sharp.fit.inside })
+//   .toBuffer();
+
+//   const getUser = onlineUsers.get(to);
+//   var msgStatus = "sent"
+//   if(currentChatUser.get(to) === from){
+//     msgStatus = "read"
+//   }else if(getUser){
+//     msgStatus = "delivered"
+//   }
+
+//     // Store both original and lower-resolution image data in the database
+//     const message = await prisma.messages.create({
+//       data: {
+//         imagemessages: {
+//           create: [
+//             {
+//               image: Buffer.from(originalImageBuffer),
+//               resolution: 'original',
+//             },
+//             {
+//               image: Buffer.from(lowerResolutionBuffer),
+//               resolution: 'lower',
+//             },
+//           ],
+//         },
+//         sender: {
+//           connect: { id: from },
+//         },
+//         reciever: {
+//           connect: { id: to },
+//         },
+//         type: 'image',
+//         messageStatus: msgStatus,
+
+//       },
+//     });
+
+//     const imageMessage = await prisma.imageMessage.findUnique({
+//       where: { id: message.id },
+//       include: { message: true }, // Include the associated message if needed
+//     });
+
+//     // Remove the temporary file
+//     await fs.unlink(req.file.path);
+
+//     return res.status(201).json({msg:imageMessage,original:true, msgStatus: msgStatus});
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
 export const addImageMessage = async (req, res, next) => {
   try {
-    const prisma = getPrismaInstance();
-    const { from, to } = req.query;
+    if (req.file) {
+      const date = Date.now();
+      let filename = "uploads/images/" + date + req.file.originalname;
+      let fileUrl = process.env.HOST + "/" + filename
+      renameSync(req.file.path, filename);
 
-    if (!from || !to) {
-      return res.status(400).send("From and to are required");
+      const prisma = getPrismaInstance();
+      const { from, to } = req.query;
+      if (from && to) {
+        const getUser = onlineUsers.get(to);
+        var msgStatus = "sent"
+        if(currentChatUser.get(to) === from){
+          msgStatus = "read"
+        }else if(getUser){
+          msgStatus = "delivered"
+        }
+        const message = await prisma.messages.create({
+          data: {
+            message: fileUrl,
+            sender: { connect: { id: from } },
+            reciever: { connect: { id: to } },
+            type: "image",
+            messageStatus: msgStatus,
+
+          },
+        });
+        return res.status(201).json({ message });
+      }
+      return res.status(400).send("From, to required");
     }
-
-    // Read original image data as a Buffer
-    const originalImageBuffer = await fs.readFile(req.file.path);
-
-    // Resize the image to a lower resolution
-    const lowerResolutionBuffer = await sharp(originalImageBuffer)
-  .resize({fit: sharp.fit.inside })
-  .toBuffer();
-
-  const getUser = onlineUsers.get(to);
-  var msgStatus = "sent"
-  if(currentChatUser.get(to) === from){
-    msgStatus = "read"
-  }else if(getUser){
-    msgStatus = "delivered"
-  }
-
-    // Store both original and lower-resolution image data in the database
-    const message = await prisma.messages.create({
-      data: {
-        imagemessages: {
-          create: [
-            {
-              image: Buffer.from(originalImageBuffer),
-              resolution: 'original',
-            },
-            {
-              image: Buffer.from(lowerResolutionBuffer),
-              resolution: 'lower',
-            },
-          ],
-        },
-        sender: {
-          connect: { id: from },
-        },
-        reciever: {
-          connect: { id: to },
-        },
-        type: 'image',
-        messageStatus: msgStatus,
-
-      },
-    });
-
-    const imageMessage = await prisma.imageMessage.findUnique({
-      where: { id: message.id },
-      include: { message: true }, // Include the associated message if needed
-    });
-
-    // Remove the temporary file
-    await fs.unlink(req.file.path);
-
-    return res.status(201).json({msg:imageMessage,original:true, msgStatus: msgStatus});
+    return res.status(400).send("Image, to required");
   } catch (error) {
     next(error);
   }
@@ -190,29 +205,35 @@ export const addImageMessage = async (req, res, next) => {
 
 export const addAudioMessage = async (req, res, next) => {
   try {
-
-    const prisma = getPrismaInstance();
-    const { from, to } = req.query;
-
-    if (!from || !to) {
-      return res.status(400).send("From and to are required");
+    if (req.file) {
+      const date = Date.now();
+      let filename = "uploads/recordings/" + date + req.file.originalname;
+      renameSync(req.file.path, filename);
+     
+      const prisma = getPrismaInstance();
+      const { from, to } = req.query;
+      if (from && to) {
+        const getUser = onlineUsers.get(to);
+        var msgStatus = "sent"
+        if(currentChatUser.get(to) === from){
+          msgStatus = "read"
+        }else if(getUser){
+          msgStatus = "delivered"
+        }
+        const message = await prisma.messages.create({
+          data: {
+            message: filename,
+            sender: { connect: { id: from } },
+            reciever: { connect: { id: to } },
+            type: "audio",
+            messageStatus: msgStatus,
+          },
+        });
+        return res.status(201).json({ message });
+      }
+      return res.status(400).send("From, to required");
     }
-
-    const audioBuffer = await fs.readFile(req.file.path);
-
-    const message = await prisma.messages.create({
-            data: {
-              audiomessage: Buffer.from(audioBuffer),
-              sender: { connect: { id: from } },
-              reciever: { connect: { id: to } },
-              type: "audio",
-            },
-          });
-
-          await fs.unlink(req.file.path);
-
-          return res.status(201).json({ message });
-
+    return res.status(400).send("audio, to required");
   } catch (error) {
     next(error);
   }
