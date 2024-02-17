@@ -3,6 +3,8 @@ import getPrismaInstance from "../utils/PrismaClient.js";
 import { renameSync } from "fs";
 import path from "path";
 import fs from 'fs/promises';
+import CalculateTime from '../utils/CalculateTime.js'
+
 
 
 export const addMessage = async (req, res, next) => {
@@ -74,7 +76,19 @@ export const getMessages = async (req, res, next) => {
       data: { messageStatus: "read" },
     });
 
-    res.status(200).json({ message: message});
+    const messageGroupedByDate = {};
+
+    message.forEach(msg=>{
+
+      const date = CalculateTime(msg.createdAt)
+
+      if(!messageGroupedByDate[date]){
+        messageGroupedByDate[date] = [];
+      }
+      messageGroupedByDate[date].push(msg);
+    })
+
+    res.status(200).json({ message: messageGroupedByDate});
   } catch (error) {
     next(error);
   }
