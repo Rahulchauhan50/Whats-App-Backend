@@ -9,7 +9,11 @@ dotenv.config();
 const port = process.env.PORT || 5000
 const app = express();
 
-app.use(cors());
+app.use(cors({
+    origin: process.env.CLIENT_HOST,  // Allow only the specific origin from the .env file
+    methods: ['GET', 'POST'],         // Define allowed HTTP methods
+    credentials: true                 // Allow credentials if needed
+  }));
 app.use(express.json());
 
 app.use("/uploads/images", express.static("uploads/images"));
@@ -35,7 +39,7 @@ global.currentChatUser = new Map();;
 io.on("connection", (socket)=>{
     global.chatShocket = socket;
     socket.on("add-user", (userId)=>{
-        // console.log(userId)
+       
         onlineUsers.set(userId, socket.id);
         // console.log(onlineUsers)
     })
@@ -115,14 +119,17 @@ io.on("connection", (socket)=>{
         }
     })
 
-    // socket.on("DisconnectEvent",(userId)=>{
-    //     console.log("before", onlineUsers)
-       
-    //     console.log("after", onlineUsers)
-    // })
 
-    // socket.on('disconnecting', (userId) => {
-    //     onlineUsers.delete(userId);
-    //     currentChatUser.delete(userId)
-    // })
+    socket.on("disconnect", () => {
+        // Find the user ID associated with this socket
+        const userId = [...onlineUsers.entries()].find(([key, value]) => value === socket.id)?.[0];
+    
+        if (userId) {
+          console.log(`User disconnected: ${userId}`);
+          
+          // Remove user from onlineUsers and currentChatUser
+          onlineUsers.delete(userId);
+          currentChatUser.delete(userId);
+        }
+      });
 })
