@@ -9,6 +9,8 @@ dotenv.config();
 const port = process.env.PORT || 5000
 const app = express();
 
+//test
+
 app.use(cors({
     origin: process.env.CLIENT_HOST,  // Allow only the specific origin from the .env file
     methods: ['GET', 'POST'],         // Define allowed HTTP methods
