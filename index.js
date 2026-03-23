@@ -6,7 +6,7 @@ import MessageRoutes from "./routes/MessageRoutes.js"
 import { Server } from 'socket.io'
 
 dotenv.config();
-const port = process.env.PORT || 5000
+const port = process.env.PORT || 5001
 const app = express();
 
 //test

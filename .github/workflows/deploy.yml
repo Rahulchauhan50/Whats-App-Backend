@@ -1,0 +1,22 @@
+name: Deploy WhatsApp Backend to VPS
+
+on:
+  push:
+    branches:
+      - main  # Change to 'master' if your default branch is called master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH into VPS and Deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /home/dev/Whats-App-Backend
+            git pull origin main
+            npm install
+            pm2 restart whatsapp
