@@ -22,6 +22,10 @@ app.use("/uploads/images", express.static("uploads/images"));
 app.use("/uploads/recordings", express.static("uploads/recordings"));
 app.use("/uploads/documents", express.static("uploads/documents"));
 
+app.get("/api/test", (req, res) => {
+  res.json({ status: "ok", message: "API is working" });
+});
+
 app.use("/api/auth",AuthRoutes)
 app.use("/api/messages",MessageRoutes)
 
