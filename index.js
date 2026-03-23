@@ -20,6 +20,7 @@ app.use(express.json());
 
 app.use("/uploads/images", express.static("uploads/images"));
 app.use("/uploads/recordings", express.static("uploads/recordings"));
+app.use("/uploads/documents", express.static("uploads/documents"));
 
 app.use("/api/auth",AuthRoutes)
 app.use("/api/messages",MessageRoutes)
@@ -64,9 +65,8 @@ io.on("connection", (socket)=>{
         const sendUserSocket = await onlineUsers.get(data.to);
         currentChatUser.set(data.by, data.to);
         if (sendUserSocket) {
-            socket.to(sendUserSocket).emit("msg-read");
+            socket.to(sendUserSocket).emit("msg-read", { readBy: data.by });
         }
-        // onlineUsers.set(data.to, socket.id);
     })
 
     socket.on("typingblur", async (data) => {
@@ -117,9 +117,39 @@ io.on("connection", (socket)=>{
         const sendUserSocket = onlineUsers.get(data.id);
         if(sendUserSocket){
             socket.to(sendUserSocket).emit("accept-call")
-            // console.log("call accepted")
         }
     })
+
+    // WebRTC signaling
+    socket.on("webrtc-offer", (data) => {
+        const sendUserSocket = onlineUsers.get(data.to);
+        if (sendUserSocket) {
+            socket.to(sendUserSocket).emit("webrtc-offer", {
+                from: data.from,
+                offer: data.offer
+            });
+        }
+    });
+
+    socket.on("webrtc-answer", (data) => {
+        const sendUserSocket = onlineUsers.get(data.to);
+        if (sendUserSocket) {
+            socket.to(sendUserSocket).emit("webrtc-answer", {
+                from: data.from,
+                answer: data.answer
+            });
+        }
+    });
+
+    socket.on("webrtc-ice-candidate", (data) => {
+        const sendUserSocket = onlineUsers.get(data.to);
+        if (sendUserSocket) {
+            socket.to(sendUserSocket).emit("webrtc-ice-candidate", {
+                from: data.from,
+                candidate: data.candidate
+            });
+        }
+    });
 
 
     socket.on("disconnect", () => {

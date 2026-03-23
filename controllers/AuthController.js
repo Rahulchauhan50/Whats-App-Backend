@@ -81,6 +81,52 @@ export const getAllUsers = async (req, res, next) => {
     }
 }
 
+export const updateProfile = async (req, res, next) => {
+    try {
+        const { userId, name, about, removeProfileImage } = req.body;
+        if (!userId) {
+            return res.json({ msg: "User ID is required", status: false });
+        }
+
+        const prisma = getPrismaInstance();
+        const updateData = {};
+
+        if (name && name.trim().length >= 3) {
+            updateData.name = name.trim();
+        }
+        if (about !== undefined) {
+            updateData.about = about.trim();
+        }
+        if (removeProfileImage === "true") {
+            updateData.profileImage = "/default_avatar.png";
+        }
+        if (req.file) {
+            const date = Date.now();
+            let filename = "uploads/images/" + date + req.file.originalname;
+            let fileUrl = process.env.HOST + "/" + filename;
+            renameSync(req.file.path, filename);
+            updateData.profileImage = fileUrl;
+        }
+
+        const updatedUser = await prisma.user.update({
+            where: { id: userId },
+            data: updateData,
+        });
+
+        return res.json({
+            msg: "Profile updated",
+            status: true,
+            data: {
+                name: updatedUser.name,
+                about: updatedUser.about,
+                profileImage: updatedUser.profileImage,
+            },
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const generateToken = (req, res, next) => {
     try {
         const appid = parseInt(process.env.NEXT_PUBLIC_ZEGO_APP_ID);

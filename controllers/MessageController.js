@@ -40,6 +40,24 @@ export const getMessages = async (req, res, next) => {
   try {
     const prisma = getPrismaInstance();
     const { from, to } = req.params;
+    const limit = parseInt(req.query.limit) || 50;
+    const skip = parseInt(req.query.skip) || 0;
+
+    // Get total count for pagination metadata
+    const totalMessages = await prisma.messages.count({
+      where: {
+        OR: [
+          {
+            senderId: from,
+            recieverId: to,
+          },
+          {
+            senderId: to,
+            recieverId: from,
+          },
+        ],
+      },
+    });
 
     const message = await prisma.messages.findMany({
       where: {
@@ -60,6 +78,8 @@ export const getMessages = async (req, res, next) => {
       orderBy: {
         id: "asc",
       },
+      take: limit,
+      skip: skip,
     });
 
     const unReadMeassages = [];
@@ -88,7 +108,17 @@ export const getMessages = async (req, res, next) => {
       messageGroupedByDate[date].push(msg);
     })
 
-    res.status(200).json({ message: messageGroupedByDate});
+    const hasMore = skip + limit < totalMessages;
+
+    res.status(200).json({ 
+      message: messageGroupedByDate,
+      pagination: {
+        total: totalMessages,
+        limit,
+        skip,
+        hasMore
+      }
+    });
   } catch (error) {
     next(error);
   }
@@ -222,6 +252,7 @@ export const addAudioMessage = async (req, res, next) => {
     if (req.file) {
       const date = Date.now();
       let filename = "uploads/recordings/" + date + req.file.originalname;
+      let fileUrl = process.env.HOST + "/" + filename;
       renameSync(req.file.path, filename);
      
       const prisma = getPrismaInstance();
@@ -236,7 +267,7 @@ export const addAudioMessage = async (req, res, next) => {
         }
         const message = await prisma.messages.create({
           data: {
-            message: filename,
+            message: fileUrl,
             sender: { connect: { id: from } },
             reciever: { connect: { id: to } },
             type: "audio",
@@ -248,6 +279,43 @@ export const addAudioMessage = async (req, res, next) => {
       return res.status(400).send("From, to required");
     }
     return res.status(400).send("audio, to required");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const addDocumentMessage = async (req, res, next) => {
+  try {
+    if (req.file) {
+      const date = Date.now();
+      let filename = "uploads/documents/" + date + req.file.originalname;
+      let fileUrl = process.env.HOST + "/" + filename;
+      renameSync(req.file.path, filename);
+     
+      const prisma = getPrismaInstance();
+      const { from, to } = req.query;
+      if (from && to) {
+        const getUser = onlineUsers.get(to);
+        var msgStatus = "sent"
+        if(currentChatUser.get(to) === from){
+          msgStatus = "read"
+        }else if(getUser){
+          msgStatus = "delivered"
+        }
+        const message = await prisma.messages.create({
+          data: {
+            message: fileUrl,
+            sender: { connect: { id: from } },
+            reciever: { connect: { id: to } },
+            type: "document",
+            messageStatus: msgStatus,
+          },
+        });
+        return res.status(201).json({ message });
+      }
+      return res.status(400).send("From, to required");
+    }
+    return res.status(400).send("document, to required");
   } catch (error) {
     next(error);
   }
