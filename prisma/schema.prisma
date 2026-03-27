@@ -16,6 +16,7 @@ model User {
   status String
   about String
   NewUser Boolean 
+  googleContactEmails String[]
   sentMessages Messages[] @relation("sentMessages")
   recievedMessages Messages[] @relation("recievedMessages")
 }

@@ -11,8 +11,19 @@ const app = express();
 
 //test
 
+const allowedOrigins = process.env.CLIENT_HOST
+  ? process.env.CLIENT_HOST.split(',').map(o => o.trim())
+  : [];
+
 app.use(cors({
-    origin: process.env.CLIENT_HOST,  // Allow only the specific origin from the .env file
+    origin: function (origin, callback) {
+      // allow requests with no origin (mobile apps, curl, etc.)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     methods: ['GET', 'POST'],         // Define allowed HTTP methods
     credentials: true                 // Allow credentials if needed
   }));
@@ -23,7 +34,7 @@ app.use("/uploads/recordings", express.static("uploads/recordings"));
 app.use("/uploads/documents", express.static("uploads/documents"));
 
 app.get("/api/test", (req, res) => {
-  res.json({ status: "ok", message: "API is working 2" });
+  res.json({ status: "ok", message: "API is working rahul" });
 });
 
 app.use("/api/auth",AuthRoutes)
@@ -36,7 +47,7 @@ const server = app.listen(port,()=>{
 
 const io = new Server(server, {
     cors:{
-        origin:process.env.CLIENT_HOST,
+        origin: allowedOrigins,
     },
 })
 

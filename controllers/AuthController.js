@@ -127,6 +127,146 @@ export const updateProfile = async (req, res, next) => {
     }
 };
 
+export const importGoogleContacts = async (req, res, next) => {
+    try {
+        const { accessToken, userId } = req.body;
+        if (!accessToken || !userId) {
+            return res.json({ msg: "Access token and userId are required", status: false });
+        }
+
+        const allGoogleContacts = [];
+
+        // Helper to fetch paginated results
+        const fetchAllPages = async (baseUrl) => {
+            let nextPageToken = "";
+            do {
+                const url = nextPageToken
+                    ? `${baseUrl}&pageToken=${nextPageToken}`
+                    : baseUrl;
+                const response = await fetch(url, {
+                    headers: { Authorization: `Bearer ${accessToken}` },
+                });
+                if (!response.ok) break;
+                const data = await response.json();
+                const contacts = data.connections || data.otherContacts || [];
+                contacts.forEach(person => {
+                    if (person.emailAddresses && person.emailAddresses.length > 0) {
+                        allGoogleContacts.push({
+                            email: person.emailAddresses[0].value.toLowerCase(),
+                            name: person.names?.[0]?.displayName || person.emailAddresses[0].value,
+                        });
+                    }
+                });
+                nextPageToken = data.nextPageToken || "";
+            } while (nextPageToken);
+        };
+
+        // Fetch from main contacts (myContacts)
+        await fetchAllPages(
+            "https://people.googleapis.com/v1/people/me/connections?personFields=names,emailAddresses&pageSize=1000&sortOrder=FIRST_NAME_ASCENDING"
+        );
+
+        // Fetch from "Other contacts"
+        await fetchAllPages(
+            "https://people.googleapis.com/v1/otherContacts?readMask=names,emailAddresses&pageSize=1000"
+        );
+
+        // Deduplicate by email
+        const uniqueEmails = [...new Set(allGoogleContacts.map(c => c.email))];
+
+        // Save imported emails to the user's record
+        const prisma = getPrismaInstance();
+        await prisma.user.update({
+            where: { id: userId },
+            data: { googleContactEmails: uniqueEmails },
+        });
+
+        // Find matching registered users in the app
+        const matchedUsers = await prisma.user.findMany({
+            where: {
+                email: { in: uniqueEmails },
+            },
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                profileImage: true,
+                about: true,
+            },
+        });
+
+        // Group matched users by initial letter
+        const usersGroupedByInitialLetter = {};
+        matchedUsers.forEach(user => {
+            const initialLetter = user.name.charAt(0).toUpperCase();
+            if (!usersGroupedByInitialLetter[initialLetter]) {
+                usersGroupedByInitialLetter[initialLetter] = [];
+            }
+            usersGroupedByInitialLetter[initialLetter].push(user);
+        });
+
+        return res.status(200).json({
+            status: true,
+            users: usersGroupedByInitialLetter,
+            totalGoogleContacts: uniqueEmails.length,
+            matchedCount: matchedUsers.length,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getSavedGoogleContacts = async (req, res, next) => {
+    try {
+        const { userId } = req.params;
+        if (!userId) {
+            return res.json({ msg: "userId is required", status: false });
+        }
+
+        const prisma = getPrismaInstance();
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { googleContactEmails: true },
+        });
+
+        if (!user || !user.googleContactEmails || user.googleContactEmails.length === 0) {
+            return res.json({ status: false, msg: "No saved Google contacts" });
+        }
+
+        // Find matching registered users
+        const matchedUsers = await prisma.user.findMany({
+            where: {
+                email: { in: user.googleContactEmails },
+            },
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                profileImage: true,
+                about: true,
+            },
+        });
+
+        const usersGroupedByInitialLetter = {};
+        matchedUsers.forEach(u => {
+            const initialLetter = u.name.charAt(0).toUpperCase();
+            if (!usersGroupedByInitialLetter[initialLetter]) {
+                usersGroupedByInitialLetter[initialLetter] = [];
+            }
+            usersGroupedByInitialLetter[initialLetter].push(u);
+        });
+
+        return res.status(200).json({
+            status: true,
+            users: usersGroupedByInitialLetter,
+            totalGoogleContacts: user.googleContactEmails.length,
+            matchedCount: matchedUsers.length,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const generateToken = (req, res, next) => {
     try {
         const appid = parseInt(process.env.NEXT_PUBLIC_ZEGO_APP_ID);

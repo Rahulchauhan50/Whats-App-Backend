@@ -6,6 +6,67 @@ import fs from 'fs/promises';
 import CalculateTime from '../utils/CalculateTime.js'
 
 
+export const addCallMessage = async (req, res, next) => {
+  try {
+    const prisma = getPrismaInstance();
+    const { from, to, callType, duration, status } = req.body;
+    // callType: "voice" | "video"
+    // status: "completed" | "missed" | "rejected"
+    // duration: seconds (0 for missed/rejected)
+
+    if (!from || !to || !callType) {
+      return res.status(400).send("from, to, and callType are required");
+    }
+
+    const callData = JSON.stringify({ callType, duration: duration || 0, status: status || "missed" });
+
+    const message = await prisma.messages.create({
+      data: {
+        message: callData,
+        sender: { connect: { id: from } },
+        reciever: { connect: { id: to } },
+        type: "call",
+        messageStatus: "read",
+      },
+      include: { reciever: true, sender: true },
+    });
+
+    return res.status(201).json({ message });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getCallLogs = async (req, res, next) => {
+  try {
+    const prisma = getPrismaInstance();
+    const { userId } = req.params;
+
+    const calls = await prisma.messages.findMany({
+      where: {
+        type: "call",
+        OR: [
+          { senderId: userId },
+          { recieverId: userId },
+        ],
+      },
+      include: {
+        sender: {
+          select: { id: true, name: true, profileImage: true, email: true },
+        },
+        reciever: {
+          select: { id: true, name: true, profileImage: true, email: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+
+    return res.status(200).json({ calls });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const addMessage = async (req, res, next) => {
   try {

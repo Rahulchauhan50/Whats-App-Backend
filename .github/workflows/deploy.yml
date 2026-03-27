@@ -1,25 +1,29 @@
-name: Deploy WhatsApp Backend to VPS
+name: CI/CD WhatsApp Backend
 
 on:
   push:
     branches:
-      - main  # Change to 'master' if your default branch is called master
+      - main  # Change to 'master' if that's your primary branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: SSH into VPS and Deploy
+      - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          sscript: |
-            set -e
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            cd /home/dev/Whats-App-Backend
+          script: |
+            # Navigate to the correct directory
+            cd ~/Node_backend/Whats-App-Backend
+            
+            # Pull latest changes
             git pull origin main
-            npm install
-            pm2 restart whatsapp
+            
+            # Install only production dependencies
+            npm install --production
+            
+            # Restart the specific PM2 process we named earlier
+            pm2 restart wapi.rahulcodes.tech --update-env
