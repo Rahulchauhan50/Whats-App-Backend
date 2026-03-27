@@ -3,7 +3,7 @@ name: CI/CD WhatsApp Backend
 on:
   push:
     branches:
-      - main  # Change to 'master' if that's your primary branch
+      - main
 
 jobs:
   deploy:
@@ -16,20 +16,16 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # Navigate to the correct directory
+            # 1. Load NVM into this session
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            
+            # 2. Navigate to directory
             cd ~/Node_backend/Whats-App-Backend
             
-            # Pull latest changes
+            # 3. Pull code
             git pull origin main
-
-            # Use absolute path for npm (Update the path below if 'which npm' is different)
-            /home/dev/.nvm/versions/node/v24.14.0/bin/npm install --production
             
-            # Use absolute path for pm2 (Update the path below if 'which pm2' is different)
-            /home/dev/.nvm/versions/node/v24.14.0/bin/pm2 restart wapi.rahulcodes.tech --update-env
-            
-            # Install only production dependencies
+            # 4. Install and Restart (Now 'npm' and 'pm2' will be found)
             npm install --production
-            
-            # Restart the specific PM2 process we named earlier
             pm2 restart wapi.rahulcodes.tech --update-env
