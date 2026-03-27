@@ -26,6 +26,8 @@ jobs:
             # 3. Pull code
             git pull origin main
             
-            # 4. Install and Restart (Now 'npm' and 'pm2' will be found)
+            # 4. Install dependencies
             npm install --production
-            pm2 restart wapi.rahulcodes.tech --update-env
+            
+            # 5. Restart the correct PM2 process
+            pm2 restart whatsapp-backend --update-env
