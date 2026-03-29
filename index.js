@@ -15,18 +15,18 @@ const allowedOrigins = process.env.CLIENT_HOST
     ? process.env.CLIENT_HOST.split(',').map(o => o.trim())
     : [];
 
-app.use(cors({
-    origin: function (origin, callback) {
-        // allow requests with no origin (mobile apps, curl, etc.)
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    methods: ['GET', 'POST'],         // Define allowed HTTP methods
-    credentials: true                 // Allow credentials if needed
-}));
+// app.use(cors({
+//     origin: function (origin, callback) {
+//         // allow requests with no origin (mobile apps, curl, etc.)
+//         if (!origin || allowedOrigins.includes(origin)) {
+//             callback(null, true);
+//         } else {
+//             callback(new Error('Not allowed by CORS'));
+//         }
+//     },
+//     methods: ['GET', 'POST'],         // Define allowed HTTP methods
+//     credentials: true                 // Allow credentials if needed
+// }));
 
 
 app.use(express.json());
