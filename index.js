@@ -12,21 +12,23 @@ const app = express();
 //test
 
 const allowedOrigins = process.env.CLIENT_HOST
-  ? process.env.CLIENT_HOST.split(',').map(o => o.trim())
-  : [];
+    ? process.env.CLIENT_HOST.split(',').map(o => o.trim())
+    : [];
 
 app.use(cors({
     origin: function (origin, callback) {
-      // allow requests with no origin (mobile apps, curl, etc.)
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
+        // allow requests with no origin (mobile apps, curl, etc.)
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
     },
     methods: ['GET', 'POST'],         // Define allowed HTTP methods
     credentials: true                 // Allow credentials if needed
-  }));
+}));
+
+
 app.use(express.json());
 
 app.use("/uploads/images", express.static("uploads/images"));
@@ -34,19 +36,19 @@ app.use("/uploads/recordings", express.static("uploads/recordings"));
 app.use("/uploads/documents", express.static("uploads/documents"));
 
 app.get("/api/test", (req, res) => {
-  res.json({ status: "ok", message: "API is working rahul" });
+    res.json({ status: "ok", message: "API is working v1" });
 });
 
-app.use("/api/auth",AuthRoutes)
-app.use("/api/messages",MessageRoutes)
+app.use("/api/auth", AuthRoutes)
+app.use("/api/messages", MessageRoutes)
 
 
-const server = app.listen(port,()=>{
+const server = app.listen(port, () => {
     console.log(`you are listening at ${port}`)
 })
 
 const io = new Server(server, {
-    cors:{
+    cors: {
         origin: allowedOrigins,
     },
 })
@@ -54,10 +56,10 @@ const io = new Server(server, {
 global.onlineUsers = new Map();
 global.currentChatUser = new Map();;
 
-io.on("connection", (socket)=>{
+io.on("connection", (socket) => {
     global.chatShocket = socket;
-    socket.on("add-user", (userId)=>{
-       
+    socket.on("add-user", (userId) => {
+
         onlineUsers.set(userId, socket.id);
         // console.log(onlineUsers)
     })
@@ -75,7 +77,7 @@ io.on("connection", (socket)=>{
         }
         // onlineUsers.set(data.to, socket.id);
     })
-    
+
     socket.on("send-msg-read", async (data) => {
         const sendUserSocket = await onlineUsers.get(data.to);
         currentChatUser.set(data.by, data.to);
@@ -91,46 +93,46 @@ io.on("connection", (socket)=>{
         }
         // onlineUsers.set(data.to, socket.id);
     })
-    socket.on("outgoing-voice-call",(data)=>{
+    socket.on("outgoing-voice-call", (data) => {
         const sendUserSocket = onlineUsers.get(data.to);
-        if(sendUserSocket){
-            socket.to(sendUserSocket).emit("incoming-voice-call",{
-                from:data.from,roomId:data.roomId, callType:data.callType
+        if (sendUserSocket) {
+            socket.to(sendUserSocket).emit("incoming-voice-call", {
+                from: data.from, roomId: data.roomId, callType: data.callType
             })
         }
 
     })
-    socket.on("outgoing-video-call",(data)=>{
-       
+    socket.on("outgoing-video-call", (data) => {
+
         const sendUserSocket = onlineUsers.get(data.to);
-        if(sendUserSocket){
-            socket.to(sendUserSocket).emit("incoming-video-call",{
-                from:data.from,roomId:data.roomId, callType:data.callType
+        if (sendUserSocket) {
+            socket.to(sendUserSocket).emit("incoming-video-call", {
+                from: data.from, roomId: data.roomId, callType: data.callType
             })
         }
 
     })
 
-    socket.on("reject-voice-call",(data)=>{
+    socket.on("reject-voice-call", (data) => {
         const sendUserSocket = onlineUsers.get(data.from);
-        if(sendUserSocket){
-            socket.to(sendUserSocket).emit("voice-call-rejected",{
-                from:data.from,roomId:data.roomId, type:data.type
+        if (sendUserSocket) {
+            socket.to(sendUserSocket).emit("voice-call-rejected", {
+                from: data.from, roomId: data.roomId, type: data.type
             })
         }
     })
-    socket.on("reject-video-call",(data)=>{
+    socket.on("reject-video-call", (data) => {
         const sendUserSocket = onlineUsers.get(data.from);
-        if(sendUserSocket){
-            socket.to(sendUserSocket).emit("video-call-rejected",{
-                from:data.from,roomId:data.roomId, callType:data.callType
+        if (sendUserSocket) {
+            socket.to(sendUserSocket).emit("video-call-rejected", {
+                from: data.from, roomId: data.roomId, callType: data.callType
             })
         }
     })
 
-    socket.on("accept-incoming-call",(data)=>{
+    socket.on("accept-incoming-call", (data) => {
         const sendUserSocket = onlineUsers.get(data.id);
-        if(sendUserSocket){
+        if (sendUserSocket) {
             socket.to(sendUserSocket).emit("accept-call")
         }
     })
@@ -170,13 +172,13 @@ io.on("connection", (socket)=>{
     socket.on("disconnect", () => {
         // Find the user ID associated with this socket
         const userId = [...onlineUsers.entries()].find(([key, value]) => value === socket.id)?.[0];
-    
+
         if (userId) {
-          console.log(`User disconnected: ${userId}`);
-          
-          // Remove user from onlineUsers and currentChatUser
-          onlineUsers.delete(userId);
-          currentChatUser.delete(userId);
+            console.log(`User disconnected: ${userId}`);
+
+            // Remove user from onlineUsers and currentChatUser
+            onlineUsers.delete(userId);
+            currentChatUser.delete(userId);
         }
-      });
+    });
 })
