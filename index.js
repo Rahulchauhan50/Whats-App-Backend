@@ -36,7 +36,7 @@ app.use("/uploads/recordings", express.static("uploads/recordings"));
 app.use("/uploads/documents", express.static("uploads/documents"));
 
 app.get("/api/test", (req, res) => {
-    res.json({ status: "ok", message: "API is working v1" });
+    res.json({ status: "ok", message: "API is working v11" });
 });
 
 app.use("/api/auth", AuthRoutes)
