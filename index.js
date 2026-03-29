@@ -10,11 +10,11 @@ const port = process.env.PORT || 5001
 const app = express();
 
 //test
-const clientOrigin = process.env.CLIENT_HOST ? process.env.CLIENT_HOST.replace(/\/$/, '') : 'https://whatsapp.rahulcodes.tech';
+const allowedOrigins = process.env.CLIENT_HOST ? process.env.CLIENT_HOST.replace(/\/$/, '') : 'https://whatsapp.rahulcodes.tech';
 
 // 2. Enable CORS with credentials
 app.use(cors({
-    origin: clientOrigin,
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
 }));
