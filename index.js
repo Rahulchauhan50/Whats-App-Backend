@@ -10,23 +10,14 @@ const port = process.env.PORT || 5001
 const app = express();
 
 //test
+const clientOrigin = process.env.CLIENT_HOST ? process.env.CLIENT_HOST.replace(/\/$/, '') : 'https://whatsapp.rahulcodes.tech';
 
-const allowedOrigins = process.env.CLIENT_HOST
-    ? process.env.CLIENT_HOST.split(',').map(o => o.trim())
-    : [];
-
-// app.use(cors({
-//     origin: function (origin, callback) {
-//         // allow requests with no origin (mobile apps, curl, etc.)
-//         if (!origin || allowedOrigins.includes(origin)) {
-//             callback(null, true);
-//         } else {
-//             callback(new Error('Not allowed by CORS'));
-//         }
-//     },
-//     methods: ['GET', 'POST'],         // Define allowed HTTP methods
-//     credentials: true                 // Allow credentials if needed
-// }));
+// 2. Enable CORS with credentials
+app.use(cors({
+    origin: clientOrigin,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    credentials: true,
+}));
 
 
 app.use(express.json());
