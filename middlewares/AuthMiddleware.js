@@ -1,0 +1,1 @@
+// auth middleware to check if the user is authenticated or not
